@@ -1,3 +1,4 @@
+from json import dump
 class MavlinkMissionItem:
     def __init__(self, seq:int, frame:int, command:int, current:int, autocontinue:int, param1:float, param2:float, param3:float, param4:float, latitude:float, longitude:float, altitude:float) -> None:
         self.seq = seq  # Waypoint ID (sequence number). Starts at zero
@@ -57,13 +58,43 @@ def read_waypoint_list(file_path = ''):
             parse_waypoint(container, chunks)
         print(f'Waypoints read and parsed from {file_path} successfully.')
 
-def write_waypoint_list(file_path = ''):
+def write_waypoint_list(wp_list: list[MavlinkMissionItem], file_path = ''):
     with open(file_path, 'w') as outFile:
         outFile.write('QGC WPL 110\r\n')
-        for wp in container.wp_list:
+        for wp in wp_list:
             # writing file with CRLF line endings
             outFile.write(str(wp)) 
         print(f'Waypoints saved to {file_path} successfully.')
+
+def write_geojson(geojson_data:str, file_path:str):
+    # Write to GeoJSON file
+    with open(file_path, 'w', newline='') as file:
+        dump(geojson_data, file, indent=2) # write json format
+    print(f'Waypoints saved in GeoJSON format to {file_path} successfully.')
+
+def convert_wp_list_to_geojson(wp_list: list[MavlinkMissionItem]):
+    feature_list = []
+    for waypoint in wp_list:
+        feature = {
+            "type": "Feature",
+            "geometry": {
+                "type": "Point",
+                "coordinates": [waypoint.y, waypoint.x]
+            },
+            "properties": {
+                "name": f"Waypoint {waypoint.seq}",
+                "elevation": waypoint.z
+            }
+        }
+        feature_list.append(feature)
+
+    geojson_data = {
+        "type": "FeatureCollection",
+        "features": feature_list
+    }
+
+    return geojson_data
+
 # read_waypoint_list('./mp-test.waypoints')
 # home waypoint
 container.add_item(3, 16, 0, 1, 0.0, 0.0, 0.0, 0.0, -35.3632622, 149.1652376, 583.91)
@@ -73,6 +104,7 @@ container.add_item(3, 16, 0, 1, 0.0, 0.0, 0.0, 0.0, -35.3642934, 149.1631365, 58
 container.add_item(3, 16, 0, 1, 0.0, 0.0, 0.0, 0.0, -35.3640659, 149.1653252, 583.91)
 #wp3
 container.add_item(3, 16, 0, 1, 0.0, 0.0, 0.0, 0.0, -35.3652033, 149.1643596, 583.91)
-write_waypoint_list('./mp-output.waypoints')
-# for wp in container.wp_list:
-#     print(wp)
+write_waypoint_list(container.wp_list, './mp-output.waypoints')
+
+geojson_data = convert_wp_list_to_geojson(container.wp_list)
+write_geojson(geojson_data, './mp-output.geojson')
