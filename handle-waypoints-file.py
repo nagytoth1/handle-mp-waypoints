@@ -1,5 +1,5 @@
 class MavlinkMissionItem:
-    def __init__(self, seq:int, frame:int, command:int, current:int, autocontinue:int, param1:float, param2:float, param3:float, param4:float, latitude:int, longitude:int, altitude:float) -> None:
+    def __init__(self, seq:int, frame:int, command:int, current:int, autocontinue:int, param1:float, param2:float, param3:float, param4:float, latitude:float, longitude:float, altitude:float) -> None:
         self.seq = seq  # Waypoint ID (sequence number). Starts at zero
         self.current = current # false:0,true:1
         self.frame = frame # The coordinate system of the waypoint.
@@ -18,12 +18,18 @@ class MavlinkMissionItem:
             f"{self.param1}\t{self.param2}\t{self.param3}\t{self.param4}\t"
             f"{float(self.x / 10**7)}\t{float(self.y / 10**7)}\t{self.z}\t{self.autocontinue}\r\n"
         )
-wp_list = []
-
+    
+class MavlinkMissionContainer:
+    def __init__(self) -> None:
+        self.wp_list = []
+        self.seq = 0
+    def add_item(self, frame:int, command:int, current:int, autocontinue:int, param1:float, param2:float, param3:float, param4:float, latitude:float, longitude:float, altitude:float):
+        self.wp_list.append(MavlinkMissionItem(self.seq, frame, command, current, autocontinue, param1, param2, param3, param4, latitude, longitude, altitude))
+        self.seq += 1
+    
 def parse_waypoint(chunks: list[str])->MavlinkMissionItem:
     if(len(chunks) != 12):
         raise Exception("Invalid file format!")
-    seq = int(chunks[0]) 
     current = int(chunks[1]) 
     frame = int(chunks[2]) 
     command = int(chunks[3])
@@ -35,8 +41,9 @@ def parse_waypoint(chunks: list[str])->MavlinkMissionItem:
     longitude = float(chunks[9])
     altitude = float(chunks[10])
     autocontinue = int(chunks[11])
-    return MavlinkMissionItem(seq, frame, command, current, autocontinue, param1, param2, param3, param4, latitude, longitude, altitude)
+    container.add_item(frame, command, current, autocontinue, param1, param2, param3, param4, latitude, longitude, altitude)
 
+container = MavlinkMissionContainer()
 def read_waypoint_list(file_path = ''):
     with open(file_path, 'r') as file:
         lines = file.readlines()
@@ -47,19 +54,25 @@ def read_waypoint_list(file_path = ''):
         # 2     0       3       16	    0.00000000	0.00000000	0.00000000	0.00000000	-35.36292090	149.16552630	100.000000	1
         for i in range(1, len(lines)):
             chunks = lines[i].split('\t')
-            item = parse_waypoint(chunks)
-            wp_list.append(item)
+            parse_waypoint(container, chunks)
         print(f'Waypoints read and parsed from {file_path} successfully.')
 
 def write_waypoint_list(file_path = ''):
     with open(file_path, 'w') as outFile:
         outFile.write('QGC WPL 110\r\n')
-        for wp in wp_list:
+        for wp in container.wp_list:
             # writing file with CRLF line endings
             outFile.write(str(wp)) 
         print(f'Waypoints saved to {file_path} successfully.')
-
-read_waypoint_list('./mp-test.waypoints')
+# read_waypoint_list('./mp-test.waypoints')
+# home waypoint
+container.add_item(3, 16, 0, 1, 0.0, 0.0, 0.0, 0.0, -35.3632622, 149.1652376, 583.91)
+#wp1
+container.add_item(3, 16, 0, 1, 0.0, 0.0, 0.0, 0.0, -35.3642934, 149.1631365, 583.91)
+#wp2
+container.add_item(3, 16, 0, 1, 0.0, 0.0, 0.0, 0.0, -35.3640659, 149.1653252, 583.91)
+#wp3
+container.add_item(3, 16, 0, 1, 0.0, 0.0, 0.0, 0.0, -35.3652033, 149.1643596, 583.91)
 write_waypoint_list('./mp-output.waypoints')
-for wp in wp_list:
-    print(wp)
+# for wp in container.wp_list:
+#     print(wp)
