@@ -79,7 +79,7 @@ def convert_wp_list_to_geojson(wp_list: list[MavlinkMissionItem]):
             "type": "Feature",
             "geometry": {
                 "type": "Point",
-                "coordinates": [waypoint.y, waypoint.x]
+                "coordinates": [float(waypoint.y / 10**7), float(waypoint.x / 10**7)]
             },
             "properties": {
                 "name": f"Waypoint {waypoint.seq}",
@@ -105,6 +105,7 @@ container.add_item(3, 16, 0, 1, 0.0, 0.0, 0.0, 0.0, -35.3640659, 149.1653252, 58
 #wp3
 container.add_item(3, 16, 0, 1, 0.0, 0.0, 0.0, 0.0, -35.3652033, 149.1643596, 583.91)
 write_waypoint_list(container.wp_list, './mp-output.waypoints')
-
+# for wp in container.wp_list:
+#     print(wp)
 geojson_data = convert_wp_list_to_geojson(container.wp_list)
 write_geojson(geojson_data, './mp-output.geojson')
